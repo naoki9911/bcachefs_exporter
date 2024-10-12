@@ -1,0 +1,11 @@
+[Unit]
+Description=bcachefs Exporter
+
+[Service]
+User=bcachefs_exporter
+ExecStart=/usr/local/bin/bcachefs_exporter --target-path /tank
+Type=simple
+User=root
+
+[Install]
+WantedBy=multi-user.target
