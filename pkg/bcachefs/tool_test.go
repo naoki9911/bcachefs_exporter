@@ -1,6 +1,7 @@
 package bcachefs
 
 import (
+	"fmt"
 	"strconv"
 	"testing"
 
@@ -234,9 +235,9 @@ ssd.ssd3 (device 4):         nvme2n1              rw
 	}
 	for idx, comp := range comps {
 		assert.Equal(comp[0], fsUsage.Compressions[idx].CompressionType)
-		assert.Equal(comp[1], strconv.Itoa(fsUsage.Compressions[idx].Comporessed))
-		assert.Equal(comp[2], strconv.Itoa(fsUsage.Compressions[idx].Uncompressed))
-		assert.Equal(comp[3], strconv.Itoa(fsUsage.Compressions[idx].AverageExtentSize))
+		assert.Equal(comp[1], fmt.Sprintf("%d", fsUsage.Compressions[idx].Comporessed))
+		assert.Equal(comp[2], fmt.Sprintf("%d", fsUsage.Compressions[idx].Uncompressed))
+		assert.Equal(comp[3], fmt.Sprintf("%d", fsUsage.Compressions[idx].AverageExtentSize))
 	}
 
 	btrees := [][]string{

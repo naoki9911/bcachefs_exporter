@@ -1,11 +1,11 @@
 package bcachefs
 
 import (
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/naoki9911/bcachefs_exporter/pkg/utils"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -32,9 +32,9 @@ type FsUsageReplica struct {
 
 type FsUsageCompression struct {
 	CompressionType   string
-	Comporessed       int
-	Uncompressed      int
-	AverageExtentSize int
+	Comporessed       int64
+	Uncompressed      int64
+	AverageExtentSize int64
 }
 
 type FsUsageBtree struct {
@@ -220,36 +220,24 @@ func collectCompressions(lines []string) ([]FsUsageCompression, int) {
 		seps := strings.Split(line, " ")
 
 		compType := seps[0]
-		compressed, err := strconv.ParseFloat(seps[1], 64)
+		compressed, err := utils.ParseSizeWithUnit(seps[1:3])
 		if err != nil {
 			log.Fatalf("unexpected line: %s: %v", line, err)
 		}
-		compressedUnit, err := stringUnitToInt(seps[2])
+		uncompressed, err := utils.ParseSizeWithUnit(seps[3:5])
 		if err != nil {
 			log.Fatalf("unexpected line: %s: %v", line, err)
 		}
-		uncompressed, err := strconv.ParseFloat(seps[3], 64)
-		if err != nil {
-			log.Fatalf("unexpected line: %s: %v", line, err)
-		}
-		uncompressedUnit, err := stringUnitToInt(seps[4])
-		if err != nil {
-			log.Fatalf("unexpected line: %s: %v", line, err)
-		}
-		avgExtent, err := strconv.ParseFloat(seps[5], 64)
-		if err != nil {
-			log.Fatalf("unexpected line: %s: %v", line, err)
-		}
-		avgExtentUnit, err := stringUnitToInt(seps[6])
+		avgExtent, err := utils.ParseSizeWithUnit(seps[5:7])
 		if err != nil {
 			log.Fatalf("unexpected line: %s: %v", line, err)
 		}
 
 		res = append(res, FsUsageCompression{
 			CompressionType:   compType,
-			Comporessed:       int(compressed * float64(compressedUnit)),
-			Uncompressed:      int(uncompressed * float64(uncompressedUnit)),
-			AverageExtentSize: int(avgExtent * float64(avgExtentUnit)),
+			Comporessed:       compressed,
+			Uncompressed:      uncompressed,
+			AverageExtentSize: avgExtent,
 		})
 	}
 
@@ -364,25 +352,4 @@ func collectDevice(lines []string) (FsUsageDevice, int) {
 	}
 
 	return res, count
-}
-
-var units10 = []string{"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"}
-var units2 = []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"}
-
-func stringUnitToInt(u string) (int, error) {
-	ret10 := 1
-	ret2 := 1
-	for i := range units10 {
-		if u == units10[i] {
-			return ret10, nil
-		}
-		if u == units2[i] {
-			return ret2, nil
-		}
-
-		ret10 *= 1000
-		ret2 *= 1024
-	}
-
-	return 0, fmt.Errorf("unexpected unit: %s", u)
 }
