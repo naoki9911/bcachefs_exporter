@@ -208,6 +208,16 @@ var (
 			"dataType",
 		},
 	)
+	promBchSysFsCounter = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bcachefs_sysfs_counter",
+	},
+		[]string{
+			"mountpoint",
+			"uuid",
+			"item",
+			"dataType",
+		},
+	)
 )
 
 func run(bchBinPath, path string) {
@@ -246,7 +256,11 @@ func run(bchBinPath, path string) {
 	if err != nil {
 		log.Fatalf("Failed to parse sysfs devs: %v", err)
 	}
-	_ = sysFsDevs
+
+	sysFsCounters, err := sysfs.ParseSysFsCounters(fsUsage.FileSystem)
+	if err != nil {
+		log.Fatalf("Failed to parse sysfs counters: %v", err)
+	}
 
 	promBchSize.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, "capacity").Set(float64(fsUsage.Capacity))
 	promBchSize.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, "used").Set(float64(fsUsage.Used))
@@ -357,6 +371,11 @@ func run(bchBinPath, path string) {
 			promBchSysFsDevIoLatency.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, k, v.Uuid, v.Label, dir, "interval_recent_mean").Set(ts.Interval.RecentMean)
 			promBchSysFsDevIoLatency.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, k, v.Uuid, v.Label, dir, "interval_recent_stddev").Set(ts.Interval.RecentStddev)
 		}
+	}
+
+	for k, v := range sysFsCounters {
+		promBchSysFsCounter.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, k, "mount").Set(float64(v.Mount))
+		promBchSysFsCounter.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, k, "creation").Set(float64(v.Creation))
 	}
 	log.Infof("Parsed %s", fsUsage.FileSystem)
 }
