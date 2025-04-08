@@ -202,23 +202,41 @@ func parseSysFsRebalanceStatus(s string) *SysFsRebalanceStatus {
 	var err error
 	re := regexp.MustCompile(`\s+`)
 	lines := strings.Split(s, "\n")
-	line := re.ReplaceAllString(lines[0], " ")
-	res := &SysFsRebalanceStatus{
-		State: line,
+	res := &SysFsRebalanceStatus{}
+	idx := 0
+	cont := true
+	for cont {
+		line := re.ReplaceAllString(lines[idx], " ")
+		idx += 1
+		if line == "" {
+			continue
+		}
+		switch line {
+		case "waiting":
+			return res
+		case "scanning", "working":
+			// ok
+			res.State = line
+			cont = false
+		default:
+			// pending work:                  10.7 TiB
+			//
+			// working
+			seps := strings.Split(line, ":")
+			switch seps[0] {
+			case "pending work":
+				// ok
+				continue
+			default:
+				log.Fatalf("unknown rebalance state '%s' '%s'", line, seps)
+			}
+		}
 	}
-	switch line {
-	case "waiting":
-		return res
-	case "scanning", "working":
-		// ok
-	default:
-		log.Fatalf("unknown rebalance state '%s'", line)
-	}
-
 	// parse 'user' from ' rebalance_scan: data type==user pos=extents:1752400415:4096:U32_MAX'
 	re2 := regexp.MustCompile(`.*data type==|\spos.*`)
-	res.DataType = re2.ReplaceAllString(lines[1], "")
-	for _, line := range lines[2:] {
+	res.DataType = re2.ReplaceAllString(lines[idx], "")
+	idx += 1
+	for _, line := range lines[idx:] {
 		line = re.ReplaceAllString(line, " ")
 		if line == "" || line == " " {
 			continue
@@ -236,6 +254,9 @@ func parseSysFsRebalanceStatus(s string) *SysFsRebalanceStatus {
 		case " bytes raced":
 			res.BytesRaced, err = utils.ParseSizeWithUnit(strings.Split(seps[1], " ")[1:3])
 		default:
+			if strings.Contains(seps[0], " [<0>") {
+				continue
+			}
 			log.Fatalf("unknown type '%s' in line '%s'", seps[0], line)
 		}
 		if err != nil {

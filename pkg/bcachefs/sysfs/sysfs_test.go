@@ -89,3 +89,31 @@ func TestParseSysFsRebalanceStatus(t *testing.T) {
 	assert.Equal(int64(3925256511160), stat.BytesMoved)
 	assert.Equal(int64(0), stat.BytesRaced)
 }
+
+func TestParseSysFsRebalanceStatus2(t *testing.T) {
+	assert := assert.New(t)
+	input := `pending work:                  10.7 TiB
+
+working
+  rebalance_work: data type==user pos=extents:296331:3240:U32_MAX
+    keys moved:                89
+    keys raced:                0
+    bytes seen:                3.76 MiB
+    bytes moved:               3.76 MiB
+    bytes raced:               0 B
+
+  [<0>] bch2_rebalance_thread+0x65/0xb0 [bcachefs]
+  [<0>] kthread+0xf9/0x240
+  [<0>] ret_from_fork+0x31/0x50
+  [<0>] ret_from_fork_asm+0x1a/0x30
+`
+
+	stat := parseSysFsRebalanceStatus(input)
+	assert.Equal("working", stat.State)
+	assert.Equal("user", stat.DataType)
+	assert.Equal(int64(89), stat.KeysMoved)
+	assert.Equal(int64(0), stat.KeysRaced)
+	assert.Equal(int64(3942645), stat.BytesSeen)
+	assert.Equal(int64(3942645), stat.BytesMoved)
+	assert.Equal(int64(0), stat.BytesRaced)
+}

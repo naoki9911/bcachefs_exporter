@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/naoki9911/bcachefs_exporter/pkg/utils"
 )
 
 type SysFsDev struct {
@@ -76,22 +78,25 @@ func parseSysFsDev(path string) (*SysFsDev, error) {
 
 	res.BucketSize, err = parseReadInt(filepath.Join(path, "bucket_size"))
 	if err != nil {
-		return nil, err
+		res.BucketSize, err = parseReadIntWithUnit(filepath.Join(path, "bucket_size"))
+		if err != nil {
+			return nil, fmt.Errorf("bucket_size: %v", err)
+		}
 	}
 
 	res.FirstBucket, err = parseReadInt(filepath.Join(path, "first_bucket"))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("first_bucket: %v", err)
 	}
 
 	res.NBuckets, err = parseReadInt(filepath.Join(path, "nbuckets"))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("nbuckets: %v", err)
 	}
 
 	res.Durability, err = parseReadInt(filepath.Join(path, "durability"))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("durability: %v", err)
 	}
 
 	p = filepath.Join(path, "io_done")
@@ -143,6 +148,19 @@ func parseReadInt(p string) (int64, error) {
 		return 0, fmt.Errorf("failed to read '%s': %v", p, err)
 	}
 	res, err := strconv.ParseInt(strings.Split(string(b), "\n")[0], 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse '%s': %v", string(b), err)
+	}
+
+	return res, nil
+}
+
+func parseReadIntWithUnit(p string) (int64, error) {
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return 0, fmt.Errorf("failed to read '%s': %v", p, err)
+	}
+	res, err := utils.ParseSizeWithUnit(strings.Split(strings.Split(string(b), "\n")[0], " "))
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse '%s': %v", string(b), err)
 	}
