@@ -48,8 +48,8 @@ cached:         1/1             1             [nvme2n1]        63226006016
 
 Compression:
 type              compressed    uncompressed     average extent size
-zstd                2.85 TiB        8.14 TiB                 124 KiB
-incompressible      9.13 TiB        9.13 TiB                90.1 KiB
+zstd           3738128195584  10870377467904                  123227
+incompressible38959301832704  38959301832704                   78479
 
 Btree usage:
 extents:         48907681792
@@ -230,8 +230,8 @@ ssd.ssd3 (device 4):         nvme2n1              rw
 	}
 
 	comps := [][]string{
-		{"zstd", "3133608139161", "8950024650096", "126976"},
-		{"incompressible", "10038541161594", "10038541161594", "92262"},
+		{"zstd", "3738128195584", "10870377467904", "123227"},
+		{"incompressible", "38959301832704", "38959301832704", "78479"},
 	}
 	for idx, comp := range comps {
 		assert.Equal(comp[0], fsUsage.Compressions[idx].CompressionType)

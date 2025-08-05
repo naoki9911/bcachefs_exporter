@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/naoki9911/bcachefs_exporter/pkg/utils"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -209,6 +208,7 @@ func collectCompressions(lines []string) ([]FsUsageCompression, int) {
 		log.Fatalf("unexpected format: %s", line)
 	}
 
+	compTypeCandidates := []string{"none", "lz4", "zstd", "gzip", "incompressible"}
 	count := 2
 	res := []FsUsageCompression{}
 	for {
@@ -218,17 +218,35 @@ func collectCompressions(lines []string) ([]FsUsageCompression, int) {
 		}
 		count += 1
 		seps := strings.Split(line, " ")
+		compType := ""
+		if len(seps) < 3 {
+			log.Fatalf("unexpected line: %s", line)
+		} else if len(seps) == 3 {
+			for _, candidate := range compTypeCandidates {
+				if strings.HasPrefix(seps[0], candidate) {
+					compType = candidate
+					seps[0] = strings.TrimPrefix(seps[0], candidate)
+					break
+				}
+			}
+			if compType == "" {
+				log.Fatalf("line with unknown compression type: %s", line)
+			}
 
-		compType := seps[0]
-		compressed, err := utils.ParseSizeWithUnit(seps[1:3])
+		} else if len(seps) == 4 {
+			compType = seps[0]
+			seps = seps[1:]
+		}
+
+		compressed, err := strconv.ParseInt(seps[0], 10, 64)
 		if err != nil {
 			log.Fatalf("unexpected line: %s: %v", line, err)
 		}
-		uncompressed, err := utils.ParseSizeWithUnit(seps[3:5])
+		uncompressed, err := strconv.ParseInt(seps[1], 10, 64)
 		if err != nil {
 			log.Fatalf("unexpected line: %s: %v", line, err)
 		}
-		avgExtent, err := utils.ParseSizeWithUnit(seps[5:7])
+		avgExtent, err := strconv.ParseInt(seps[2], 10, 64)
 		if err != nil {
 			log.Fatalf("unexpected line: %s: %v", line, err)
 		}
