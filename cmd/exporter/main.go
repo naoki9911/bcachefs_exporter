@@ -22,6 +22,7 @@ var (
 )
 
 func main() {
+	log.SetReportCaller(true)
 	flag.Parse()
 
 	if *targetPath == "" {
@@ -221,7 +222,7 @@ var (
 )
 
 func run(bchBinPath, path string) {
-	results, err := exec.Command(bchBinPath, "fs", "usage", path).Output()
+	results, err := exec.Command(bchBinPath, "fs", "usage", "-f", "replicas,btree,compression,rebalance_work,devices", path).Output()
 	if err != nil {
 		log.Fatalf("Failed to get usage: %v", err)
 	}

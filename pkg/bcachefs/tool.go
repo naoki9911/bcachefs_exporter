@@ -113,6 +113,10 @@ func ParseFsUsage(path, results string) *FsUsage {
 		} else if strings.HasPrefix(line, "Pending rebalance work:") {
 			fs.Rebalance, count = collectRebalance(lines[idx:])
 			idx += count
+		} else if strings.HasPrefix(line, "Data by durability desired and amount degraded:") {
+			for idx < len(lines) && lines[idx] != "" {
+				idx += 1
+			}
 		} else {
 			d, count := collectDevice(lines[idx:])
 			fs.Devices = append(fs.Devices, d)
@@ -139,7 +143,7 @@ func collectAccountings(lines []string) ([]FsUsageReplica, int) {
 		}
 		count += 1
 
-		seps := strings.Split(line, " ")
+		seps := strings.SplitN(line, " ", 4)
 		//fmt.Println(seps)
 
 		dataType := strings.ReplaceAll(seps[0], ":", "")
@@ -160,29 +164,12 @@ func collectAccountings(lines []string) ([]FsUsageReplica, int) {
 			})
 		} else {
 			durability := seps[2]
-			devicesIdx := 2
-			devices := ""
-			for {
-				devicesIdx += 1
-
-				str := seps[devicesIdx]
-				if strings.HasSuffix(str, "]") {
-					if devices == "" {
-						devices = str[1 : len(str)-1]
-					} else {
-						devices += " " + str[:len(str)-1]
-					}
-					break
-				}
-				if devices == "" {
-					devices = str[1:]
-				} else {
-					devices += " " + str
-				}
+			re := regexp.MustCompile(`\[([^]]+)\]\s*(\d+)`)
+			matches := re.FindStringSubmatch(seps[3])
+			if len(matches) != 3 {
+				log.Fatalf("failed to parse '%s': %v", line, matches)
 			}
-			//fmt.Println(devices)
-
-			size, err := strconv.Atoi(seps[devicesIdx+1])
+			size, err := strconv.Atoi(matches[2])
 			if err != nil {
 				log.Fatalf("failed to parse '%s': %v", line, err)
 			}
@@ -191,7 +178,7 @@ func collectAccountings(lines []string) ([]FsUsageReplica, int) {
 				DataType:      dataType,
 				RequiredTotal: requiredTotal,
 				Durability:    durability,
-				Devices:       devices,
+				Devices:       matches[1],
 				Size:          size,
 			})
 		}
@@ -341,6 +328,13 @@ func collectDevice(lines []string) (FsUsageDevice, int) {
 		}
 		line = re.ReplaceAllString(line, " ")
 		seps = strings.Split(line, " ")
+		if len(seps) < 3 {
+			log.Fatalf("unexpected line: %s", line)
+		}
+		if seps[1] == "bucket" && seps[2] == "size:" {
+			// 'bucket size:' is ignored
+			continue
+		}
 
 		dataType := strings.ReplaceAll(seps[1], ":", "")
 		dataSize, err := strconv.Atoi(seps[2])
@@ -358,7 +352,7 @@ func collectDevice(lines []string) (FsUsageDevice, int) {
 			Size:     dataSize,
 			Buckets:  buckets,
 		}
-		if len(seps) > 4 {
+		if len(seps) > 4 && seps[4] != "" {
 			fragmented, err := strconv.Atoi(seps[4])
 			if err != nil {
 				log.Fatalf("unexpected line: %s: %v", line, err)
