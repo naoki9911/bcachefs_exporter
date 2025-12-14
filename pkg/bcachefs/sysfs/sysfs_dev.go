@@ -78,10 +78,7 @@ func parseSysFsDev(path string) (*SysFsDev, error) {
 
 	res.BucketSize, err = parseReadInt(filepath.Join(path, "bucket_size"))
 	if err != nil {
-		res.BucketSize, err = parseReadIntWithUnit(filepath.Join(path, "bucket_size"))
-		if err != nil {
-			return nil, fmt.Errorf("bucket_size: %v", err)
-		}
+		return nil, fmt.Errorf("bucket_size: %v", err)
 	}
 
 	res.FirstBucket, err = parseReadInt(filepath.Join(path, "first_bucket"))
@@ -147,7 +144,7 @@ func parseReadInt(p string) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed to read '%s': %v", p, err)
 	}
-	res, err := strconv.ParseInt(strings.Split(string(b), "\n")[0], 10, 64)
+	res, err := parseSizeWithUnitWithoutSpace(strings.Split(string(b), "\n")[0])
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse '%s': %v", string(b), err)
 	}

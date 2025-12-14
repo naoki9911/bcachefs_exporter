@@ -24,6 +24,7 @@ func ParseSizeWithUnit(s []string) (int64, error) {
 }
 
 var byteUnits10 = []string{"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"}
+var units10 = []string{"", "k", "M", "G", "T", "P", "E", "Z", "Y"}
 var byteUnits2 = []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"}
 
 func stringByteUnitToInt(u string) (int64, error) {
@@ -35,6 +36,9 @@ func stringByteUnitToInt(u string) (int64, error) {
 		}
 		if u == byteUnits2[i] {
 			return ret2, nil
+		}
+		if u == units10[i] {
+			return ret10, nil
 		}
 
 		ret10 *= 1000

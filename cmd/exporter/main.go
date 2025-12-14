@@ -280,7 +280,10 @@ func run(bchBinPath, path string) {
 		promBchBtree.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, b.DataType).Set(float64(b.Size))
 	}
 
-	promBchRebalance.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, "pending").Set(float64(fsUsage.Rebalance.PendingSize))
+	promBchRebalance.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, "reconcile compression data").Set(float64(fsUsage.Reconcile.CompressionData))
+	promBchRebalance.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, "reconcile compression metadata").Set(float64(fsUsage.Reconcile.CompressionMetadata))
+	promBchRebalance.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, "reconcile target data").Set(float64(fsUsage.Reconcile.TargetData))
+	promBchRebalance.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, "reconcile target metadata").Set(float64(fsUsage.Reconcile.TargetMetadata))
 
 	for _, dev := range fsUsage.Devices {
 		for _, ddev := range dev.Datas {

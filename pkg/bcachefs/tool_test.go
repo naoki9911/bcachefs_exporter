@@ -37,9 +37,12 @@ incompressible35909528035328  35909528035328                   79440
 Btree usage:
 extents:        195974660096
 inodes:          57868288000
+reconcile_work_phys: 1048576
+reconcile_hipri_phys:1048576
 
-Pending rebalance work:
-8216518656
+Pending reconcile:                      data    metadata
+compression:                        11845632           0
+target:                            527060992           0
 
 hdd.hdd1 (device 0):             sdd              rw    79%
                                 data         buckets    fragmented
@@ -87,13 +90,18 @@ hdd.hdd1 (device 0):             sdd              rw    79%
 	btrees := [][]string{
 		{"extents", "195974660096"},
 		{"inodes", "57868288000"},
+		{"reconcile_work_phys", "1048576"},
+		{"reconcile_hipri_phys", "1048576"},
 	}
 	for idx, b := range btrees {
 		assert.Equal(b[0], fsUsage.Btrees[idx].DataType)
 		assert.Equal(b[1], strconv.Itoa(fsUsage.Btrees[idx].Size))
 	}
 
-	assert.Equal("8216518656", strconv.Itoa(fsUsage.Rebalance.PendingSize))
+	assert.Equal("11845632", strconv.Itoa(fsUsage.Reconcile.CompressionData))
+	assert.Equal("0", strconv.Itoa(fsUsage.Reconcile.CompressionMetadata))
+	assert.Equal("527060992", strconv.Itoa(fsUsage.Reconcile.TargetData))
+	assert.Equal("0", strconv.Itoa(fsUsage.Reconcile.TargetMetadata))
 
 	devices := [][]string{
 		{"hdd.hdd1", "device 0"},

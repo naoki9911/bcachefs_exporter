@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/naoki9911/bcachefs_exporter/pkg/utils"
 	log "github.com/sirupsen/logrus"
@@ -116,31 +117,38 @@ func ParseSysFsRebalanceStatus(uuid string) (*SysFsRebalanceStatus, error) {
 }
 
 func parseSysFsBtreeWriteStats(s string) []SysFsBtreeWriteStat {
-	re := regexp.MustCompile(`\s+`)
 	lines := strings.Split(s, "\n")
-	line := re.ReplaceAllString(lines[0], " ")
-	if line != " nr size" {
-		log.Fatalf("unexpected format: %s", line)
+	if len(lines) == 0 {
+		return nil
+	}
+	header := strings.Fields(lines[0])
+	if len(header) < 2 || header[0] != "nr" || header[1] != "size" {
+		log.Fatalf("unexpected format: %s", strings.Join(header, " "))
 	}
 
 	res := []SysFsBtreeWriteStat{}
-	for _, line := range lines[1:] {
-		if line == "" {
+	for _, rawLine := range lines[1:] {
+		fields := strings.Fields(rawLine)
+		if len(fields) == 0 {
 			continue
 		}
-		line = re.ReplaceAllString(line, " ")
-		seps := strings.Split(line, " ")
-		nr, err := strconv.ParseInt(seps[1], 10, 64)
+		if len(fields) < 3 {
+			log.Fatalf("unexpected format: %s", rawLine)
+		}
+
+		nr, err := strconv.ParseInt(fields[1], 10, 64)
 		if err != nil {
 			log.Fatalf("failed to parse 'nr': %v", err)
 		}
-		size, err := utils.ParseSizeWithUnit(seps[2:4])
+
+		size, err := parseSizeWithUnitWithoutSpace(fields[2])
 		if err != nil {
 			log.Fatalf("failed to parse 'size': %v", err)
 		}
+
 		res = append(res, SysFsBtreeWriteStat{
-			Stat: strings.ReplaceAll(seps[0], ":", ""),
-			NR:   int64(nr),
+			Stat: strings.TrimSuffix(fields[0], ":"),
+			NR:   nr,
 			Size: size,
 		})
 	}
@@ -148,9 +156,43 @@ func parseSysFsBtreeWriteStats(s string) []SysFsBtreeWriteStat {
 	return res
 }
 
+func parseSizeWithUnitWithoutSpace(s string) (int64, error) {
+	sizeTokens, err := normalizeSizeTokens([]string{s})
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse size: %v", err)
+	}
+	size, err := utils.ParseSizeWithUnit(sizeTokens)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse size: %v", err)
+	}
+	return size, nil
+}
+
+func normalizeSizeTokens(tokens []string) ([]string, error) {
+	if len(tokens) == 0 {
+		return nil, fmt.Errorf("missing size value")
+	}
+	raw := strings.Join(tokens, "")
+	value, unit := splitNumericAndUnit(raw)
+	if value == "" {
+		return nil, fmt.Errorf("invalid size token '%s'", raw)
+	}
+	return []string{value, unit}, nil
+}
+
+func splitNumericAndUnit(s string) (string, string) {
+	idx := len(s)
+	for i, r := range s {
+		if !(unicode.IsDigit(r) || r == '.') {
+			idx = i
+			break
+		}
+	}
+	return s[:idx], s[idx:]
+}
+
 func parseSysFsBtreeCacheSize(s string) int64 {
-	seps := strings.Split(strings.Split(s, "\n")[0], " ")
-	size, err := utils.ParseSizeWithUnit(seps[0:2])
+	size, err := parseSizeWithUnitWithoutSpace(strings.ReplaceAll(s, "\n", ""))
 	if err != nil {
 		log.Fatalf("failed to parse 'size': %v", err)
 	}
@@ -174,15 +216,16 @@ func parseSysFsCompressionStats(s string) []SysFsCompressionStat {
 		seps := strings.Split(line, " ")
 
 		compType := seps[0]
-		compressed, err := utils.ParseSizeWithUnit(seps[1:3])
+		compressed, err := parseSizeWithUnitWithoutSpace(seps[1])
 		if err != nil {
 			log.Fatalf("unexpected line: %s: %v", line, err)
 		}
-		uncompressed, err := utils.ParseSizeWithUnit(seps[3:5])
+
+		uncompressed, err := parseSizeWithUnitWithoutSpace(seps[2])
 		if err != nil {
 			log.Fatalf("unexpected line: %s: %v", line, err)
 		}
-		avgExtent, err := utils.ParseSizeWithUnit(seps[5:7])
+		avgExtent, err := parseSizeWithUnitWithoutSpace(seps[3])
 		if err != nil {
 			log.Fatalf("unexpected line: %s: %v", line, err)
 		}

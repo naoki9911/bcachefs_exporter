@@ -10,20 +10,20 @@ import (
 func TestParseSysFsBtreeWriteStats(t *testing.T) {
 	assert := assert.New(t)
 	input := `                   nr        size
-initial:           364286    118 KiB
-init_next_bset:    369063    24.9 KiB
-cache_reclaim:     11667     306 B
-journal_reclaim:   6045506   664 B
-interior:          254768    998 B
+initial:           4243      129k
+init_next_bset:    132       24.6k
+cache_reclaim:     0         0
+journal_reclaim:   28651     215
+interior:          4078      285
 `
 
 	stat := parseSysFsBtreeWriteStats(input)
 	expectedStats := [][]string{
-		{"initial", "364286", "120832"},
-		{"init_next_bset", "369063", "25497"},
-		{"cache_reclaim", "11667", "306"},
-		{"journal_reclaim", "6045506", "664"},
-		{"interior", "254768", "998"},
+		{"initial", "4243", "129000"},
+		{"init_next_bset", "132", "24600"},
+		{"cache_reclaim", "0", "0"},
+		{"journal_reclaim", "28651", "215"},
+		{"interior", "4078", "285"},
 	}
 
 	for i, s := range expectedStats {
@@ -35,20 +35,20 @@ interior:          254768    998 B
 
 func TestParseSysFsBtreeCacheSize(t *testing.T) {
 	assert := assert.New(t)
-	input := `19.1 GiB
-	`
+	input := `19.1G
+`
 
-	assert.Equal(int64(20508468838), parseSysFsBtreeCacheSize(input))
+	assert.Equal(int64(19100000000), parseSysFsBtreeCacheSize(input))
 }
 
 func TestParseSysFsCompressionStats(t *testing.T) {
 	assert := assert.New(t)
 	input := `typetype          compressed    uncompressed     average extent size
-lz4_old                  0 B             0 B                     0 B
-gzip                     0 B             0 B                     0 B
-lz4                      0 B             0 B                     0 B
-zstd                2.86 TiB        8.15 TiB                 123 KiB
-incompressible      10.5 TiB        10.5 TiB                82.2 KiB
+lz4_old                    0               0                       0
+gzip                       0               0                       0
+lz4                        0               0                       0
+zstd                   3.32T           9.69T                    119k
+incompressible         11.4T           11.4T                   94.7k
 `
 
 	stat := parseSysFsCompressionStats(input)
@@ -56,8 +56,8 @@ incompressible      10.5 TiB        10.5 TiB                82.2 KiB
 		{"lz4_old", "0", "0", "0"},
 		{"gzip", "0", "0", "0"},
 		{"lz4", "0", "0", "0"},
-		{"zstd", "3144603255439", "8961019766374", "125952"},
-		{"incompressible", "11544872091648", "11544872091648", "84172"},
+		{"zstd", "3320000000000", "9690000000000", "119000"},
+		{"incompressible", "11400000000000", "11400000000000", "94700"},
 	}
 
 	for i, s := range expectedStats {

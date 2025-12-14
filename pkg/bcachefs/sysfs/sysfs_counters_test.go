@@ -19,11 +19,11 @@ since filesystem creation:     551
 
 func TestParseSysFsCounterBytes(t *testing.T) {
 	assert := assert.New(t)
-	input := `since mount:                   1.32 TiB
-since filesystem creation:     81.2 TiB
+	input := `since mount:                   7.69G
+since filesystem creation:     176T
 `
 	c, err := parseSysFsCounter(input)
 	assert.Nil(err)
-	assert.Equal(int64(1451355348664), c.Mount)
-	assert.Equal(int64(89280344175411), c.Creation)
+	assert.Equal(int64(7690000000), c.Mount)
+	assert.Equal(int64(176000000000000), c.Creation)
 }

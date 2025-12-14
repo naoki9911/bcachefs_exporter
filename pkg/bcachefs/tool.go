@@ -17,7 +17,7 @@ type FsUsage struct {
 	Replicas       []FsUsageReplica
 	Compressions   []FsUsageCompression
 	Btrees         []FsUsageBtree
-	Rebalance      FsUsageRebalance
+	Reconcile      FsUsageReconcile
 	Devices        []FsUsageDevice
 }
 
@@ -41,8 +41,11 @@ type FsUsageBtree struct {
 	Size     int
 }
 
-type FsUsageRebalance struct {
-	PendingSize int
+type FsUsageReconcile struct {
+	CompressionData     int
+	CompressionMetadata int
+	TargetData          int
+	TargetMetadata      int
 }
 
 type FsUsageDevice struct {
@@ -110,8 +113,8 @@ func ParseFsUsage(path, results string) *FsUsage {
 		} else if strings.HasPrefix(line, "Btree usage:") {
 			fs.Btrees, count = collectBtree(lines[idx:])
 			idx += count
-		} else if strings.HasPrefix(line, "Pending rebalance work:") {
-			fs.Rebalance, count = collectRebalance(lines[idx:])
+		} else if strings.HasPrefix(line, "Pending reconcile:") {
+			fs.Reconcile, count = collectReconcile(lines[idx:])
 			idx += count
 		} else if strings.HasPrefix(line, "Data by durability desired and amount degraded:") {
 			for idx < len(lines) && lines[idx] != "" {
@@ -259,9 +262,9 @@ func collectBtree(lines []string) ([]FsUsageBtree, int) {
 			break
 		}
 		count += 1
-		seps := strings.Split(line, " ")
-		dataType := strings.ReplaceAll(seps[0], ":", "")
-		size, err := strconv.Atoi(seps[1])
+		seps := strings.Split(line, ":")
+		dataType := strings.TrimSpace(seps[0])
+		size, err := strconv.Atoi(strings.TrimSpace(seps[1]))
 		if err != nil {
 			log.Fatalf("unexpected line: %s: %v", line, err)
 		}
@@ -273,20 +276,42 @@ func collectBtree(lines []string) ([]FsUsageBtree, int) {
 	return res, count
 }
 
-func collectRebalance(lines []string) (FsUsageRebalance, int) {
+func collectReconcile(lines []string) (FsUsageReconcile, int) {
 	re := regexp.MustCompile(`\s+`)
-	res := FsUsageRebalance{}
+	res := FsUsageReconcile{}
 	count := 1
-	var err error
 	for {
 		line := re.ReplaceAllString(lines[count], " ")
-		if count == 2 {
+		if line == "" {
 			break
 		}
 		count += 1
-		res.PendingSize, err = strconv.Atoi(line)
+		seps := strings.Split(line, ":")
+		if len(seps) < 2 {
+			log.Fatalf("unexpected line: %s", line)
+		}
+		dataType := strings.TrimSpace(seps[0])
+		seps = strings.SplitN(strings.TrimSpace(seps[1]), " ", 2)
+		if len(seps) < 2 {
+			log.Fatalf("unexpected line on values: %s", line)
+		}
+		dataSize, err := strconv.Atoi(strings.TrimSpace(seps[0]))
 		if err != nil {
 			log.Fatalf("unexpected line: %s: %v", line, err)
+		}
+		metadataSize, err := strconv.Atoi(strings.TrimSpace(seps[1]))
+		if err != nil {
+			log.Fatalf("unexpected line: %s: %v", line, err)
+		}
+		switch dataType {
+		case "compression":
+			res.CompressionData = dataSize
+			res.CompressionMetadata = metadataSize
+		case "target":
+			res.TargetData = dataSize
+			res.TargetMetadata = metadataSize
+		default:
+			log.Fatalf("unexpected data type: %s", dataType)
 		}
 	}
 	return res, count
