@@ -17,7 +17,7 @@ type FsUsage struct {
 	Replicas       []FsUsageReplica
 	Compressions   []FsUsageCompression
 	Btrees         []FsUsageBtree
-	Reconcile      FsUsageReconcile
+	Reconcile      map[string]FsUsageReconcile
 	Devices        []FsUsageDevice
 }
 
@@ -42,10 +42,8 @@ type FsUsageBtree struct {
 }
 
 type FsUsageReconcile struct {
-	CompressionData     int
-	CompressionMetadata int
-	TargetData          int
-	TargetMetadata      int
+	Data     int
+	Metadata int
 }
 
 type FsUsageDevice struct {
@@ -276,9 +274,9 @@ func collectBtree(lines []string) ([]FsUsageBtree, int) {
 	return res, count
 }
 
-func collectReconcile(lines []string) (FsUsageReconcile, int) {
+func collectReconcile(lines []string) (map[string]FsUsageReconcile, int) {
 	re := regexp.MustCompile(`\s+`)
-	res := FsUsageReconcile{}
+	res := map[string]FsUsageReconcile{}
 	count := 1
 	for {
 		line := re.ReplaceAllString(lines[count], " ")
@@ -303,15 +301,9 @@ func collectReconcile(lines []string) (FsUsageReconcile, int) {
 		if err != nil {
 			log.Fatalf("unexpected line: %s: %v", line, err)
 		}
-		switch dataType {
-		case "compression":
-			res.CompressionData = dataSize
-			res.CompressionMetadata = metadataSize
-		case "target":
-			res.TargetData = dataSize
-			res.TargetMetadata = metadataSize
-		default:
-			log.Fatalf("unexpected data type: %s", dataType)
+		res[dataType] = FsUsageReconcile{
+			Data:     dataSize,
+			Metadata: metadataSize,
 		}
 	}
 	return res, count

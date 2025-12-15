@@ -41,8 +41,10 @@ reconcile_work_phys: 1048576
 reconcile_hipri_phys:1048576
 
 Pending reconcile:                      data    metadata
-compression:                        11845632           0
-target:                            527060992           0
+replicas:                             679936           0
+compression:                         9064448           0
+target:                           1589837824           0
+high_priority:                        679936           0
 
 hdd.hdd1 (device 0):             sdd              rw    79%
                                 data         buckets    fragmented
@@ -98,10 +100,16 @@ hdd.hdd1 (device 0):             sdd              rw    79%
 		assert.Equal(b[1], strconv.Itoa(fsUsage.Btrees[idx].Size))
 	}
 
-	assert.Equal("11845632", strconv.Itoa(fsUsage.Reconcile.CompressionData))
-	assert.Equal("0", strconv.Itoa(fsUsage.Reconcile.CompressionMetadata))
-	assert.Equal("527060992", strconv.Itoa(fsUsage.Reconcile.TargetData))
-	assert.Equal("0", strconv.Itoa(fsUsage.Reconcile.TargetMetadata))
+	reconciles := [][]string{
+		{"replicas", "679936", "0"},
+		{"compression", "9064448", "0"},
+		{"target", "1589837824", "0"},
+		{"high_priority", "679936", "0"},
+	}
+	for _, r := range reconciles {
+		assert.Equal(r[1], strconv.Itoa(fsUsage.Reconcile[r[0]].Data))
+		assert.Equal(r[2], strconv.Itoa(fsUsage.Reconcile[r[0]].Metadata))
+	}
 
 	devices := [][]string{
 		{"hdd.hdd1", "device 0"},

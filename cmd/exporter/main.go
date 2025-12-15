@@ -89,12 +89,13 @@ var (
 			"dataType",
 		},
 	)
-	promBchRebalance = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "bcachefs_fs_usage_rebalance",
+	promBchReconcile = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bcachefs_fs_usage_reconcile",
 	},
 		[]string{
 			"mountpoint",
 			"uuid",
+			"type",
 			"dataType",
 		},
 	)
@@ -280,10 +281,10 @@ func run(bchBinPath, path string) {
 		promBchBtree.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, b.DataType).Set(float64(b.Size))
 	}
 
-	promBchRebalance.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, "reconcile compression data").Set(float64(fsUsage.Reconcile.CompressionData))
-	promBchRebalance.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, "reconcile compression metadata").Set(float64(fsUsage.Reconcile.CompressionMetadata))
-	promBchRebalance.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, "reconcile target data").Set(float64(fsUsage.Reconcile.TargetData))
-	promBchRebalance.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, "reconcile target metadata").Set(float64(fsUsage.Reconcile.TargetMetadata))
+	for dataType, c := range fsUsage.Reconcile {
+		promBchReconcile.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, dataType, "data").Set(float64(c.Data))
+		promBchReconcile.WithLabelValues(fsUsage.Path, fsUsage.FileSystem, dataType, "metadata").Set(float64(c.Metadata))
+	}
 
 	for _, dev := range fsUsage.Devices {
 		for _, ddev := range dev.Datas {
